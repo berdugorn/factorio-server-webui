@@ -6,7 +6,7 @@ LOG_DIR=/var/log/factorio-web
 SERVICE_NAME=factorio-web
 SERVICE_FILE=/etc/systemd/system/${SERVICE_NAME}.service
 
-# ── colours ──────────────────────────────────────────────────────────────────
+# ── colours ────────────────────────────────────────────────────────────────── 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
 info()  { echo -e "${GREEN}[✓]${NC} $*"; }
 warn()  { echo -e "${YELLOW}[!]${NC} $*"; }

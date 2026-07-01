@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login — Factorio Server</title>
+<style>
+  :root { --bg:#1a1a1a; --surface:#242424; --border:#3a3a3a; --orange:#e8901a; --yellow:#ffb300; --text:#e0e0e0; --muted:#888; --red:#f44336; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+  .box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 2.5rem; width: 340px; }
+  h1 { text-align: center; color: var(--orange); margin-bottom: .4rem; font-size: 1.3rem; letter-spacing: 1px; }
+  .sub { text-align: center; color: var(--muted); font-size: .85rem; margin-bottom: 2rem; }
+  label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: .4rem; }
+  input { width: 100%; padding: 10px 12px; background: #2e2e2e; border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-size: .95rem; margin-bottom: 1rem; }
+  input:focus { outline: none; border-color: var(--orange); }
+  button { width: 100%; padding: 10px; background: var(--orange); color: #111; border: none; border-radius: 5px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: background .2s; margin-top: .5rem; }
+  button:hover { background: var(--yellow); }
+  .err { background: rgba(244,67,54,.1); border: 1px solid var(--red); color: var(--red); padding: 8px 12px; border-radius: 5px; font-size: .85rem; margin-bottom: 1rem; }
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>⚙ FACTORIO</h1>
+  <p class="sub">Server Manager</p>
+  {% with msgs = get_flashed_messages() %}
+    {% if msgs %}{% for m in msgs %}<div class="err">{{ m }}</div>{% endfor %}{% endif %}
+  {% endwith %}
+  <form method="post">
+    <label>Username</label>
+    <input type="text" name="username" autofocus autocomplete="username">
+    <label>Password</label>
+    <input type="password" name="password" autocomplete="current-password">
+    <button type="submit">Sign In</button>
+  </form>
+</div>
+</body>
+</html>

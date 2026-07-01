@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+{% block title %}Settings — Factorio Server{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+<p style="color:var(--muted);font-size:.85rem;margin-bottom:1.5rem">Changes to server settings will restart Factorio automatically.</p>
+
+<form method="post">
+  <div class="grid grid-2">
+
+    {# ── General ── #}
+    <div class="card">
+      <h2>General</h2>
+      <div class="form-group">
+        <label>Server Name</label>
+        <input type="text" name="name" value="{{ cfg.name }}">
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea name="description" rows="3" style="resize:vertical">{{ cfg.description }}</textarea>
+      </div>
+      <div class="form-group">
+        <label>Tags <span style="font-size:.8rem;color:var(--muted)">(comma- or newline-separated, shown in server browser)</span></label>
+        <textarea name="tags" rows="2" style="resize:vertical" placeholder="vanilla, PvE, no-pvp">{{ cfg.tags | join(', ') if cfg.tags else '' }}</textarea>
+      </div>
+      <div class="form-group">
+        <label>Game Password (join password)</label>
+        <div style="display:flex;gap:.5rem;align-items:center">
+          <input type="password" name="game_password" id="game_password" value="{{ cfg.game_password }}" style="flex:1">
+          <button type="button" onclick="toggleGamePw()" id="game-pw-eye"
+            style="background:none;border:1px solid var(--border);border-radius:5px;padding:8px 10px;cursor:pointer;color:var(--muted);line-height:1;flex-shrink:0"
+            title="Show / hide password">
+            <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Max Players (0 = unlimited)</label>
+        <input type="number" name="max_players" value="{{ cfg.max_players }}" min="0">
+      </div>
+    </div>
+
+    {# ── Visibility ── #}
+    <div class="card">
+      <h2>Visibility</h2>
+      <div class="form-group">
+        <label class="toggle" style="margin-bottom:.6rem">
+          <input type="checkbox" name="visibility_public" id="visibility_public" {% if cfg.visibility.public %}checked{% endif %} onchange="checkPublicCreds()">
+          Public (show on Factorio server browser)
+        </label>
+        <p id="public-creds-warn" style="display:none;font-size:.8rem;color:var(--yellow);margin:.25rem 0 .5rem 0">
+          &#9888; Public listing requires a Factorio account token — add credentials below.
+        </p>
+        <label class="toggle" style="margin-bottom:.6rem">
+          <input type="checkbox" name="visibility_lan" {% if cfg.visibility.lan %}checked{% endif %}>
+          LAN broadcast
+        </label>
+        <label class="toggle" style="margin-bottom:.6rem">
+          <input type="checkbox" name="require_user_verification" {% if cfg.require_user_verification %}checked{% endif %}>
+          Require Factorio.com account
+        </label>
+      </div>
+
+      <h2 style="margin-top:1.2rem">Behaviour</h2>
+      <div class="form-group">
+        <label class="toggle" style="margin-bottom:.6rem">
+          <input type="checkbox" name="auto_pause" {% if cfg.auto_pause %}checked{% endif %}>
+          Auto-pause when no players
+        </label>
+        <label class="toggle" style="margin-bottom:.6rem">
+          <input type="checkbox" name="only_admins_can_pause_the_game" {% if cfg.get('only_admins_can_pause_the_game', True) %}checked{% endif %}>
+          Only admins can pause the game
+        </label>
+      </div>
+      <div class="form-group">
+        <label>AFK Kick (minutes, 0 = off)</label>
+        <input type="number" name="afk_autokick_interval" value="{{ cfg.afk_autokick_interval }}" min="0">
+      </div>
+      <div class="form-group">
+        <label>Console Commands</label>
+        <select name="allow_commands">
+          <option value="admins-only" {% if cfg.get('allow_commands','admins-only') == 'admins-only' %}selected{% endif %}>Admins only</option>
+          <option value="true" {% if cfg.get('allow_commands') == 'true' %}selected{% endif %}>All players</option>
+          <option value="false" {% if cfg.get('allow_commands') == 'false' %}selected{% endif %}>Nobody</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Research Queue</label>
+        <select name="research_queue_setting">
+          <option value="after-victory" {% if cfg.get('research_queue_setting','after-victory') == 'after-victory' %}selected{% endif %}>After victory</option>
+          <option value="always" {% if cfg.get('research_queue_setting') == 'always' %}selected{% endif %}>Always</option>
+          <option value="never" {% if cfg.get('research_queue_setting') == 'never' %}selected{% endif %}>Never</option>
+        </select>
+      </div>
+    </div>
+
+  </div>{# /grid-2 #}
+
+  {# ── Autosave + Admins row ── #}
+  <div class="grid grid-2" style="margin-top:1rem">
+
+    <div class="card">
+      <h2>Autosave</h2>
+      <div class="grid grid-2" style="gap:.75rem">
+        <div class="form-group" style="margin-bottom:0">
+          <label>Interval (minutes)</label>
+          <input type="number" name="autosave_interval" value="{{ cfg.get('autosave_interval', 10) }}" min="1">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Slots to keep</label>
+          <input type="number" name="autosave_slots" value="{{ cfg.get('autosave_slots', 5) }}" min="1">
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:.85rem">
+        <label class="toggle" style="margin-bottom:.6rem">
+          <input type="checkbox" name="autosave_only_on_server" {% if cfg.get('autosave_only_on_server', True) %}checked{% endif %}>
+          Autosave only on server (clients don't save)
+        </label>
+        <label class="toggle">
+          <input type="checkbox" name="non_blocking_saving" {% if cfg.get('non_blocking_saving', False) %}checked{% endif %}>
+          Non-blocking save (separate thread — recommended for large maps)
+        </label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>In-game Admins</h2>
+      <p style="color:var(--muted);font-size:.85rem;margin-bottom:.6rem">
+        Factorio usernames with in-game admin privileges (one per line). Separate from web UI roles.
+      </p>
+      <div class="form-group">
+        <textarea name="admins" rows="5" style="resize:vertical;font-family:monospace" placeholder="username1&#10;username2">{{ cfg.get('admins', []) | join('\n') }}</textarea>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="margin-top:.5rem">
+    <button type="submit" class="btn btn-primary">Save &amp; Restart Server</button>
+  </div>
+</form>
+
+<div class="card" style="margin-top:1.5rem" id="saves">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+    <h2 style="margin:0">Save Files</h2>
+    <div style="display:flex;gap:.5rem;align-items:center">
+      <button type="button" class="btn btn-muted btn-sm" onclick="document.getElementById('save-upload-input').click()">↑ Upload Save</button>
+      <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('new-map-modal').style.display='flex'">+ Generate New Map</button>
+    </div>
+    <form method="post" action="/saves/upload" enctype="multipart/form-data" style="display:none">
+      <input type="file" name="file" accept=".zip" id="save-upload-input" onchange="this.form.submit()">
+    </form>
+  </div>
+  <table>
+    <thead>
+      <tr><th>Name</th><th>Version</th><th>Size</th><th>Modified</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for s in saves %}
+      <tr>
+        <td>
+          {{ s.name }}
+          {% if s.name == active %}<span class="badge badge-online" style="margin-left:.5rem;font-size:.7rem">Active</span>{% endif %}
+        </td>
+        <td style="color:var(--muted);font-size:.85rem">
+          {% if s.mods %}
+          <span title="{{ s.mods | join('\n') }}" style="cursor:help;border-bottom:1px dotted var(--muted)">{{ s.version }}</span>
+          {% else %}
+          {{ s.version }}
+          {% endif %}
+        </td>
+        <td style="color:var(--muted)">{{ s.size }} MB</td>
+        <td style="color:var(--muted)">{{ s.modified }}</td>
+        <td>
+          <div style="display:flex;gap:.5rem">
+            <a href="/saves/download/{{ s.name }}" class="btn btn-muted btn-sm">↓ Download</a>
+            {% if s.name != active %}
+            <form method="post" action="/saves/switch">
+              <input type="hidden" name="name" value="{{ s.name }}">
+              <button type="submit" class="btn btn-muted btn-sm">Switch</button>
+            </form>
+            <form method="post" action="/saves/delete">
+              <input type="hidden" name="name" value="{{ s.name }}">
+              <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete {{ s.name }}?')">Delete</button>
+            </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" style="color:var(--muted);text-align:center">No save files found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="margin-top:1.5rem">
+  <h2>Factorio Account <span style="font-size:.75rem;font-weight:normal;color:var(--muted)">(required for updates &amp; public listing)</span></h2>
+  <p style="color:var(--muted);font-size:.85rem;margin-bottom:1rem">
+    Required to download experimental builds and to list on the public server browser.
+    Find your token at <strong>factorio.com → Profile → API key</strong>.
+  </p>
+  <form method="post" action="/settings/factorio-credentials">
+    <div class="grid grid-2">
+      <div class="form-group">
+        <label>Factorio Username</label>
+        <input type="text" name="factorio_username" value="{{ creds.username or '' }}" autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label>Factorio Token</label>
+        <input type="password" name="factorio_token" value="{{ creds.token or '' }}" autocomplete="off">
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Save Credentials</button>
+    {% if creds.username %}
+    <span style="margin-left:.75rem;font-size:.85rem;color:var(--green)">&#10003; Credentials saved for {{ creds.username }}</span>
+    {% endif %}
+  </form>
+</div>
+
+<div class="card" style="margin-top:1.5rem">
+  <h2>RCON <span style="font-size:.75rem;font-weight:normal;color:var(--muted)">(in-game messages, player list &amp; kick)</span></h2>
+  <p style="color:var(--muted);font-size:.85rem;margin-bottom:1rem">
+    Saves these settings and updates the service file automatically.
+    The server needs a restart for RCON to activate.
+  </p>
+  <form method="post" action="/settings/rcon">
+    <div class="grid grid-2">
+      <div class="form-group">
+        <label>RCON Port</label>
+        <input type="number" name="rcon_port" value="{{ rcon.port or 27015 }}" min="1024" max="65535">
+      </div>
+      <div class="form-group">
+        <label>RCON Password</label>
+        <input type="password" name="rcon_password" value="{{ rcon.password or '' }}" autocomplete="new-password">
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Save &amp; Restart Server</button>
+    {% if rcon.password %}
+    <span style="margin-left:.75rem;font-size:.85rem;color:var(--green)">&#10003; RCON configured on port {{ rcon.port }}</span>
+    {% endif %}
+  </form>
+</div>
+
+{# ── generate new map modal ── #}
+<div id="new-map-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center" onclick="if(event.target===this)this.style.display='none'">
+  <div class="card" style="width:340px;margin:0">
+    <h2>Generate New Map</h2>
+    <p style="font-size:.85rem;color:var(--muted);margin-bottom:1rem">Creates a new random world and configures the server to use it. The current save is not affected.</p>
+    <form method="post" action="/saves/new">
+      <div class="form-group">
+        <label>Save name</label>
+        <input type="text" name="name" value="game" placeholder="game">
+      </div>
+      <div style="display:flex;gap:.5rem">
+        <button type="submit" class="btn btn-primary">Generate</button>
+        <button type="button" class="btn btn-muted" onclick="document.getElementById('new-map-modal').style.display='none'">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if is_admin %}
+<div class="card" style="margin-top:1.5rem;border-color:var(--red)">
+  <h2 style="color:var(--red)">Danger Zone</h2>
+  <p style="color:var(--muted);font-size:.85rem;margin-bottom:1rem">
+    Wiping Factorio removes the entire <code>/opt/factorio/</code> directory and the systemd service file.
+    Your save files are stored inside <code>/opt/factorio/saves/</code> and will be deleted too — download any saves you want to keep first.
+    Use this before installing an older version.
+  </p>
+  <form method="post" action="/settings/wipe-factorio" onsubmit="return confirm('This will delete Factorio and all save files. Are you absolutely sure?')">
+    <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap">
+      <input type="text" name="confirm" placeholder='Type WIPE to confirm' style="width:220px">
+      <button type="submit" class="btn btn-danger">Wipe Factorio</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+<script>
+function toggleGamePw() {
+  const input = document.getElementById('game_password');
+  const icon = document.getElementById('eye-icon');
+  const showing = input.type === 'text';
+  input.type = showing ? 'password' : 'text';
+  icon.innerHTML = showing
+    ? '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'
+    : '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+}
+
+function checkPublicCreds() {
+  const checked = document.getElementById('visibility_public').checked;
+  const hasCreds = {{ 'true' if creds.username else 'false' }};
+  document.getElementById('public-creds-warn').style.display = (checked && !hasCreds) ? 'block' : 'none';
+}
+// Run on load in case public is already checked and no creds
+checkPublicCreds();
+</script>
+{% endblock %}

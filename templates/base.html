@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Factorio Server{% endblock %}</title>
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<style>
+  :root {
+    --bg: #1a1a1a;
+    --surface: #242424;
+    --surface2: #2e2e2e;
+    --border: #3a3a3a;
+    --orange: #e8901a;
+    --orange-dim: #a86010;
+    --green: #4caf50;
+    --red: #f44336;
+    --yellow: #ffb300;
+    --text: #e0e0e0;
+    --muted: #888;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  a { color: var(--orange); text-decoration: none; }
+  a:hover { color: var(--yellow); }
+
+  /* nav */
+  nav {
+    background: var(--surface);
+    border-bottom: 2px solid var(--orange-dim);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    height: 52px;
+    gap: 2rem;
+  }
+  .nav-brand { font-size: 1.1rem; font-weight: 700; color: var(--orange); letter-spacing: 1px; }
+  .nav-links { display: flex; gap: 1.5rem; flex: 1; }
+  .nav-links a { color: var(--muted); font-size: .9rem; padding: 4px 0; border-bottom: 2px solid transparent; transition: all .2s; }
+  .nav-links a:hover, .nav-links a.active { color: var(--text); border-bottom-color: var(--orange); }
+  .nav-user { margin-left: auto; color: var(--muted); font-size: .85rem; }
+  .nav-user a { color: var(--orange); }
+
+  /* layout */
+  .container { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+  h1 { font-size: 1.4rem; margin-bottom: 1.5rem; color: var(--orange); }
+  h2 { font-size: 1.1rem; margin-bottom: 1rem; color: var(--text); }
+
+  /* cards */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; }
+  .card-title { font-size: .75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: .5rem; }
+  .card-value { font-size: 1.5rem; font-weight: 600; }
+
+  /* grid */
+  .grid { display: grid; gap: 1rem; }
+  .grid-4 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  .grid-2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+
+  /* status badge */
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: .8rem; font-weight: 600; }
+  .badge-online { background: rgba(76,175,80,.2); color: var(--green); border: 1px solid var(--green); }
+  .badge-offline { background: rgba(244,67,54,.2); color: var(--red); border: 1px solid var(--red); }
+  .badge-error { background: rgba(255,179,0,.2); color: var(--yellow); border: 1px solid var(--yellow); }
+
+  /* buttons */
+  .btn { display: inline-block; padding: 8px 18px; border-radius: 5px; border: none; cursor: pointer; font-size: .9rem; font-weight: 600; transition: all .2s; }
+  .btn-primary { background: var(--orange); color: #111; }
+  .btn-primary:hover { background: var(--yellow); }
+  .btn-danger { background: rgba(244,67,54,.15); color: var(--red); border: 1px solid var(--red); }
+  .btn-danger:hover { background: rgba(244,67,54,.3); }
+  .btn-success { background: rgba(76,175,80,.15); color: var(--green); border: 1px solid var(--green); }
+  .btn-success:hover { background: rgba(76,175,80,.3); }
+  .btn-muted { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-muted:hover { border-color: var(--orange); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-sm { padding: 5px 12px; font-size: .8rem; }
+
+  /* forms */
+  .form-group { margin-bottom: 1rem; }
+  label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: .4rem; }
+  input[type=text], input[type=password], input[type=number], textarea, select {
+    width: 100%; padding: 8px 12px; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 5px; color: var(--text); font-size: .9rem;
+  }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--orange); }
+  .toggle { display: flex; align-items: center; gap: .6rem; cursor: pointer; }
+  .toggle input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--orange); }
+
+  /* table */
+  table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  th { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--muted); font-size: .75rem; text-transform: uppercase; letter-spacing: 1px; }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+
+  /* alerts */
+  .flash { padding: 10px 16px; border-radius: 5px; margin-bottom: 1rem; font-size: .9rem; background: rgba(232,144,26,.15); border: 1px solid var(--orange-dim); color: var(--orange); }
+
+  /* log */
+  .log-box { background: #0d0d0d; border: 1px solid var(--border); border-radius: 6px; padding: 1rem; font-family: monospace; font-size: .78rem; line-height: 1.5; max-height: 400px; overflow-y: auto; color: #aaa; }
+  .log-box .err { color: var(--red); }
+  .log-box .warn { color: var(--yellow); }
+  .log-box .info { color: #6af; }
+
+  /* controls row */
+  .controls { display: flex; gap: .75rem; flex-wrap: wrap; align-items: center; }
+
+  /* spinner */
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--orange-dim); border-top-color: var(--orange); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<nav>
+  <span class="nav-brand">⚙ FACTORIO</span>
+  <div class="nav-links">
+    <a href="/" class="{% if request.endpoint == 'dashboard' %}active{% endif %}">Dashboard</a>
+    {% if is_mod_or_above %}
+    <a href="/settings" class="{% if request.endpoint in ('settings', 'settings_factorio_credentials') %}active{% endif %}">Settings</a>
+    {% endif %}
+    <a href="/users" class="{% if request.endpoint in ('users', 'users_add', 'users_delete', 'users_change_password', 'users_set_role') %}active{% endif %}">Users</a>
+  </div>
+  <div class="nav-user">{{ username }} &nbsp;·&nbsp; <a href="/logout">Logout</a></div>
+</nav>
+<div class="container">
+  {% with msgs = get_flashed_messages() %}
+    {% if msgs %}{% for m in msgs %}<div class="flash">{{ m }}</div>{% endfor %}{% endif %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</div>
+</body>
+</html>

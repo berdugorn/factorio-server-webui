@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Setup — Factorio Server</title>
+<style>
+  :root { --bg:#1a1a1a; --surface:#242424; --border:#3a3a3a; --orange:#e8901a; --yellow:#ffb300; --text:#e0e0e0; --muted:#888; --red:#f44336; --green:#4caf50; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+  .box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 2.5rem; width: 360px; }
+  h1 { text-align: center; color: var(--orange); margin-bottom: .4rem; font-size: 1.3rem; letter-spacing: 1px; }
+  .sub { text-align: center; color: var(--muted); font-size: .85rem; margin-bottom: 1.5rem; }
+  .notice { background: rgba(232,144,26,.1); border: 1px solid var(--orange); border-radius: 6px; padding: 10px 14px; font-size: .85rem; color: var(--orange); margin-bottom: 1.5rem; line-height: 1.5; }
+  label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: .4rem; }
+  input { width: 100%; padding: 10px 12px; background: #2e2e2e; border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-size: .95rem; margin-bottom: 1rem; }
+  input:focus { outline: none; border-color: var(--orange); }
+  input:read-only { opacity: .5; cursor: not-allowed; }
+  button { width: 100%; padding: 10px; background: var(--orange); color: #111; border: none; border-radius: 5px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: background .2s; margin-top: .5rem; }
+  button:hover { background: var(--yellow); }
+  .err { background: rgba(244,67,54,.1); border: 1px solid var(--red); color: var(--red); padding: 8px 12px; border-radius: 5px; font-size: .85rem; margin-bottom: 1rem; }
+  .match { font-size: .8rem; margin-top: -.6rem; margin-bottom: .8rem; min-height: 1rem; }
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>⚙ FACTORIO</h1>
+  <p class="sub">First-time Setup</p>
+  <div class="notice">No accounts exist yet. Set a password for the <strong>admin</strong> account to get started.</div>
+  {% if error %}<div class="err">{{ error }}</div>{% endif %}
+  <form method="post">
+    <label>Username</label>
+    <input type="text" value="admin" readonly>
+    <label>Password</label>
+    <input type="password" name="password" id="pw" autofocus autocomplete="new-password">
+    <label>Confirm Password</label>
+    <input type="password" name="password2" id="pw2" autocomplete="new-password">
+    <div class="match" id="match-msg"></div>
+    <button type="submit">Create Admin &amp; Continue</button>
+  </form>
+</div>
+<script>
+  ['pw','pw2'].forEach(id => document.getElementById(id).addEventListener('input', () => {
+    const a = document.getElementById('pw').value;
+    const b = document.getElementById('pw2').value;
+    const el = document.getElementById('match-msg');
+    if (!b) { el.textContent = ''; return; }
+    el.textContent = a === b ? '✓ Passwords match' : '✗ Passwords do not match';
+    el.style.color = a === b ? 'var(--green)' : 'var(--red)';
+  }));
+</script>
+</body>
+</html>

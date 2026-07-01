@@ -1,0 +1,344 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Factorio Server{% endblock %}
+{% block content %}
+<h1>Dashboard</h1>
+
+<div id="countdown-banner" style="display:none;background:rgba(244,67,54,.15);border:1px solid var(--red);border-radius:8px;padding:12px 18px;margin-bottom:1rem;font-size:.95rem;color:var(--red);font-weight:600"></div>
+
+{% if version == 'unknown' %}
+<div style="background:rgba(255,179,0,.1);border:1px solid var(--yellow);border-radius:8px;padding:12px 18px;margin-bottom:1rem;font-size:.9rem;color:var(--yellow)">
+  ⚠ Factorio binary not found at <code style="font-size:.85rem">{{ factorio_bin }}</code>. Controls and updates will not work until Factorio is installed.
+</div>
+{% endif %}
+
+<div class="grid grid-4" style="margin-bottom:1.5rem">
+  <div class="card">
+    <div class="card-title">Status</div>
+    <div id="status-badge">
+      {% if status == 'active' %}<span class="badge badge-online">● Online</span>
+      {% elif status == 'inactive' %}<span class="badge badge-offline">● Offline</span>
+      {% else %}<span class="badge badge-error">● {{ status }}</span>{% endif %}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Version</div>
+    <div class="card-value" style="font-size:1.1rem">{{ version }}</div>
+    {% if has_update %}
+    <div style="margin-top:.5rem;font-size:.8rem;color:var(--yellow)">Update available</div>
+    {% endif %}
+  </div>
+  <div class="card">
+    <div class="card-title">Active Save</div>
+    <div style="font-size:.95rem;word-break:break-all">{{ active_save }}</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Uptime</div>
+    <div id="uptime" class="card-value" style="font-size:1.1rem">{{ uptime or '—' }}</div>
+  </div>
+</div>
+
+{% if current_role != 'viewer' %}
+<div class="grid grid-2" style="margin-bottom:1.5rem">
+  <div class="card" style="margin-bottom:0">
+    <h2>Controls</h2>
+    <div class="controls">
+      <button class="btn btn-success" onclick="control('start')">▶ Start</button>
+      <button class="btn btn-danger" onclick="control('stop')">■ Stop</button>
+      <button class="btn btn-muted" onclick="control('restart')">↺ Restart</button>
+      <span id="control-msg" style="font-size:.85rem;color:var(--muted)"></span>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:0">
+    {% if version == 'unknown' %}
+
+    <h2>Install Server</h2>
+    <p style="font-size:.85rem;color:var(--muted);margin-bottom:.75rem">Factorio is not installed. Choose a version to install.</p>
+    <label style="display:flex;align-items:center;gap:.5rem;font-size:.85rem;margin-bottom:.75rem;cursor:pointer">
+      <input type="checkbox" id="install-sa" checked> Include Space Age DLC mods
+    </label>
+    <div style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:.5rem">
+      {% for channel, ver in [('stable', latest_stable), ('experimental', latest_experimental)] %}
+      {% if ver %}
+      <div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:.6rem .9rem">
+        <div>
+          <span style="font-size:.78rem;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">{{ channel }}</span>
+          <strong style="margin-left:.5rem">{{ ver }}</strong>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="startUpdate('{{ channel }}')">↓ Install</button>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+
+    {% else %}
+
+    <h2>Update Server</h2>
+    <p style="font-size:.85rem;color:var(--muted);margin-bottom:.75rem">Installed: <strong style="color:var(--text)">{{ installed }}</strong>
+      {% if installed_space_age is not none %}
+        — Space Age mods <strong style="color:{% if installed_space_age %}var(--green){% else %}var(--muted){% endif %}">{% if installed_space_age %}enabled{% else %}disabled{% endif %}</strong>
+      {% endif %}
+    </p>
+    <input type="hidden" id="install-sa" value="{{ 'true' if installed_space_age else 'false' }}">
+    <div style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:.5rem">
+      {% for channel, ver, is_down in [('stable', latest_stable, stable_is_downgrade), ('experimental', latest_experimental, experimental_is_downgrade)] %}
+      {% if ver and (installed_channel is none or installed_channel == channel) %}
+      <div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:.6rem .9rem">
+        <div>
+          <span style="font-size:.78rem;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">{{ channel }}</span>
+          <strong style="margin-left:.5rem">{{ ver }}</strong>
+          {% if ver == installed %}
+            <span style="margin-left:.5rem;font-size:.75rem;color:var(--green)">✓ installed</span>
+          {% elif is_down %}
+            <span style="margin-left:.5rem;font-size:.75rem;color:var(--red)">↓ older</span>
+          {% else %}
+            <span style="margin-left:.5rem;font-size:.75rem;color:var(--yellow)">↑ update</span>
+          {% endif %}
+        </div>
+        <button class="btn btn-sm {% if ver != installed and not is_down %}btn-primary{% else %}btn-muted{% endif %}"
+          onclick="startUpdate('{{ channel }}')" {% if is_down %}disabled title="Older than installed"{% endif %}>
+          {% if ver == installed %}Re-install{% else %}Install{% endif %}
+        </button>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% if stable_is_downgrade or experimental_is_downgrade %}
+    <p style="font-size:.8rem;color:var(--muted);margin-bottom:.5rem">To install an older version, wipe Factorio first via Settings → Danger Zone.</p>
+    {% endif %}
+
+    {% endif %}
+
+    <div id="update-log" style="display:none;margin-top:.75rem">
+      <div class="log-box" id="update-lines" style="max-height:200px"></div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- players + chat -->
+<div style="display:grid;grid-template-columns:1fr 3fr;gap:1rem;margin-bottom:1.5rem">
+
+  <div class="card" style="margin-bottom:0;display:flex;flex-direction:column">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+      <h2 style="margin:0">Players <span id="player-count" style="font-size:.85rem;color:var(--muted);font-weight:normal"></span></h2>
+      {% if is_mod_or_above %}
+      <button class="btn btn-danger btn-sm" id="kick-all-btn" onclick="kickAll()" style="display:none">Kick All</button>
+      {% endif %}
+    </div>
+    <div id="player-list" style="color:var(--muted);font-size:.9rem;overflow-y:auto;flex:1;min-height:260px">Loading...</div>
+  </div>
+
+  <div class="card" style="margin-bottom:0;display:flex;flex-direction:column">
+    <h2>Game Chat</h2>
+    <div id="chat-box" style="background:#0d0d0d;border:1px solid var(--border);border-radius:6px;padding:.75rem;font-family:monospace;font-size:.8rem;line-height:1.6;height:260px;overflow-y:auto;color:#aaa;margin-bottom:.75rem">
+      <span style="color:var(--muted)">Loading chat history...</span>
+    </div>
+    {% if current_role != 'viewer' %}
+    <div style="display:flex;gap:.5rem">
+      <input type="text" id="say-input" placeholder="Message to all players…" style="flex:1" onkeydown="if(event.key==='Enter')sendMessage()">
+      <button class="btn btn-primary" onclick="sendMessage()">Send</button>
+    </div>
+    <div id="say-msg" style="font-size:.8rem;margin-top:.3rem;min-height:1rem"></div>
+    {% endif %}
+  </div>
+
+</div>
+
+<!-- server log -->
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+    <h2 style="margin:0">Server Log</h2>
+    <button class="btn btn-muted btn-sm" onclick="loadLogs()">↺ Refresh</button>
+  </div>
+  <div class="log-box" id="log-box">Loading...</div>
+</div>
+
+<script>
+const IS_MOD = {{ 'true' if is_mod_or_above else 'false' }};
+let lastChatTs = null;
+let chatLines = [];
+let chatAutoScroll = true;
+
+function statusBadge(s) {
+  if (s === 'active') return '<span class="badge badge-online">● Online</span>';
+  if (s === 'inactive') return '<span class="badge badge-offline">● Offline</span>';
+  return `<span class="badge badge-error">● ${s}</span>`;
+}
+
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+
+// ── players ──────────────────────────────────────────────────────────────────
+function renderPlayers(players) {
+  const list = document.getElementById('player-list');
+  const count = document.getElementById('player-count');
+  const kickAllBtn = document.getElementById('kick-all-btn');
+  count.textContent = players.length ? `(${players.length})` : '';
+  if (kickAllBtn) kickAllBtn.style.display = players.length ? '' : 'none';
+  if (!players.length) {
+    list.innerHTML = '<span style="color:var(--muted)">No players online</span>';
+    return;
+  }
+  list.innerHTML = players.map(p => {
+    const kickBtn = IS_MOD
+      ? `<button class="btn btn-danger btn-sm" data-player="${esc(p)}" onclick="kick(this.dataset.player)">Kick</button>`
+      : '';
+    return `<div style="display:flex;align-items:center;gap:.6rem;padding:5px 0;border-bottom:1px solid var(--border)">
+      <span style="flex:1">● ${esc(p)}</span>${kickBtn}
+    </div>`;
+  }).join('');
+}
+
+// ── status poll ──────────────────────────────────────────────────────────────
+async function pollStatus() {
+  try {
+    const r = await fetch('/api/status');
+    const d = await r.json();
+    document.getElementById('status-badge').innerHTML = statusBadge(d.status);
+    document.getElementById('uptime').textContent = d.uptime || '—';
+    renderPlayers(d.players || []);
+    const banner = document.getElementById('countdown-banner');
+    if (d.countdown) {
+      const word = d.countdown_action === 'restart' ? 'Restarting' : 'Shutting down';
+      banner.textContent = `⚠ ${word} in ${d.countdown_seconds} second${d.countdown_seconds === 1 ? '' : 's'}…`;
+      banner.style.display = 'block';
+    } else {
+      banner.style.display = 'none';
+    }
+  } catch(e) {}
+}
+
+// ── controls ─────────────────────────────────────────────────────────────────
+async function control(action) {
+  const msg = document.getElementById('control-msg');
+  msg.textContent = `Sending ${action}…`;
+  try {
+    const r = await fetch('/api/control', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action})});
+    const d = await r.json();
+    if (d.status) document.getElementById('status-badge').innerHTML = statusBadge(d.status);
+    msg.textContent = d.countdown
+      ? `✓ ${action} queued — warning ${d.players.length} player${d.players.length===1?'':'s'}`
+      : d.ok ? `✓ ${action} sent` : `✗ ${d.error||'failed'}`;
+  } catch(e) { msg.textContent = 'Error'; }
+}
+
+// ── kick ─────────────────────────────────────────────────────────────────────
+async function kick(player) {
+  if (!confirm(`Kick ${player}?`)) return;
+  const r = await fetch('/api/kick', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({player})});
+  const d = await r.json();
+  if (d.ok) pollStatus(); else alert('Kick failed: ' + d.error);
+}
+async function kickAll() {
+  if (!confirm('Kick all players?')) return;
+  const r = await fetch('/api/kick-all', {method:'POST'});
+  const d = await r.json();
+  if (d.ok) pollStatus(); else alert('Kick all failed: ' + d.error);
+}
+
+// ── chat ─────────────────────────────────────────────────────────────────────
+function renderChat() {
+  const box = document.getElementById('chat-box');
+  if (!chatLines.length) { box.innerHTML = '<span style="color:var(--muted)">No chat history yet.</span>'; return; }
+  const sep = d => `<div style="display:flex;align-items:center;gap:.5rem;margin:.4rem 0;color:#555;font-size:.75rem"><span style="flex:1;border-top:1px solid #333"></span><span>${d}</span><span style="flex:1;border-top:1px solid #333"></span></div>`;
+  let lastDate = null;
+  box.innerHTML = chatLines.map(m => {
+    const date = m.ts.slice(0, 10);
+    const divider = date !== lastDate ? sep(date) : '';
+    lastDate = date;
+    if (m.type === 'chat') {
+      return `${divider}<div><span style="color:var(--muted)">[${m.time}]</span> <span style="color:var(--orange)">${esc(m.player)}:</span> ${esc(m.text)}</div>`;
+    } else if (m.type === 'server') {
+      return `${divider}<div><span style="color:var(--muted)">[${m.time}]</span> <span style="color:#6af">[Web] ${esc(m.player)}:</span> ${esc(m.text)}</div>`;
+    } else if (m.type === 'join') {
+      return `${divider}<div style="color:var(--green)">[${m.time}] ▶ ${esc(m.player)} joined</div>`;
+    } else {
+      return `${divider}<div style="color:var(--muted)">[${m.time}] ◀ ${esc(m.player)} left</div>`;
+    }
+  }).join('');
+  if (chatAutoScroll) box.scrollTop = box.scrollHeight;
+}
+
+async function pollChat() {
+  try {
+    const r = await fetch('/api/chat');
+    const d = await r.json();
+    const msgs = d.messages || [];
+    const newMsgs = lastChatTs ? msgs.filter(m => m.ts > lastChatTs) : msgs;
+    if (newMsgs.length) {
+      chatLines = [...chatLines, ...newMsgs].slice(-100);
+      lastChatTs = chatLines[chatLines.length - 1].ts;
+      renderChat();
+    } else if (!lastChatTs) {
+      chatLines = msgs;
+      if (msgs.length) lastChatTs = msgs[msgs.length - 1].ts;
+      renderChat();
+    }
+  } catch(e) {}
+}
+
+// track if user scrolled up
+const chatBox = document.getElementById('chat-box');
+chatBox.addEventListener('scroll', () => {
+  chatAutoScroll = chatBox.scrollTop + chatBox.clientHeight >= chatBox.scrollHeight - 10;
+});
+
+async function sendMessage() {
+  const input = document.getElementById('say-input');
+  const msg = document.getElementById('say-msg');
+  const text = input.value.trim();
+  if (!text) return;
+  try {
+    const r = await fetch('/api/say', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({message:text})});
+    const d = await r.json();
+    if (d.ok) { msg.style.color='var(--green)'; msg.textContent='✓ Sent'; input.value=''; }
+    else { msg.style.color='var(--red)'; msg.textContent='✗ '+d.error; }
+  } catch(e) { msg.style.color='var(--red)'; msg.textContent='Error'; }
+  setTimeout(() => msg.textContent='', 3000);
+}
+
+// ── server log ───────────────────────────────────────────────────────────────
+async function loadLogs() {
+  try {
+    const r = await fetch('/api/logs');
+    const d = await r.json();
+    const box = document.getElementById('log-box');
+    box.innerHTML = d.lines.map(l => {
+      let cls = '';
+      if (/Error/i.test(l)) cls = 'err';
+      else if (/Warning/i.test(l)) cls = 'warn';
+      else if (/Info/i.test(l)) cls = 'info';
+      return `<div class="${cls}">${l.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>`;
+    }).join('');
+    box.scrollTop = box.scrollHeight;
+  } catch(e) {}
+}
+
+// ── update ───────────────────────────────────────────────────────────────────
+let updatePoller;
+async function startUpdate(channel) {
+  const el = document.getElementById('install-sa');
+  const space_age = el.type === 'checkbox' ? el.checked : el.value === 'true';
+  document.getElementById('update-log').style.display = 'block';
+  document.getElementById('update-lines').textContent = '';
+  await fetch('/api/update', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({channel, space_age})});
+  updatePoller = setInterval(pollUpdateProgress, 1000);
+}
+async function pollUpdateProgress() {
+  const r = await fetch('/api/update/progress');
+  const d = await r.json();
+  const box = document.getElementById('update-lines');
+  box.innerHTML = d.lines.map(l => `<div>${esc(l)}</div>`).join('');
+  box.scrollTop = box.scrollHeight;
+  if (!d.running) { clearInterval(updatePoller); setTimeout(() => location.reload(), 2000); }
+}
+
+// ── init ─────────────────────────────────────────────────────────────────────
+setInterval(pollStatus, 3000);
+setInterval(pollChat, 2000);
+setInterval(loadLogs, 15000);
+pollStatus();
+pollChat();
+loadLogs();
+</script>
+{% endblock %}

@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Users — Factorio Server{% endblock %}
+{% block content %}
+<h1>User Management</h1>
+
+{% if is_mod_or_above %}
+{# ── roles this user can assign when adding ── #}
+{% if current_role == 'admin' %}{% set addable = ['admin','moderator','user','viewer'] %}
+{% else %}{% set addable = ['user','viewer'] %}{% endif %}
+
+<div class="grid grid-2">
+  <div class="card">
+    <h2>Add User</h2>
+    <form method="post" action="/users/add">
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" name="username" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label>Role</label>
+        <select name="role">
+          {% for r in addable %}
+          <option value="{{ r }}">{{ r|capitalize }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" name="password" id="add-pw" autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label>Retype Password</label>
+        <input type="password" name="password2" id="add-pw2" autocomplete="new-password">
+        <div id="pw-match-msg" style="font-size:.8rem;margin-top:.3rem"></div>
+      </div>
+      <button type="submit" class="btn btn-primary">Add User</button>
+    </form>
+    <script>
+      ['add-pw','add-pw2'].forEach(id => document.getElementById(id).addEventListener('input', () => {
+        const a = document.getElementById('add-pw').value;
+        const b = document.getElementById('add-pw2').value;
+        const msg = document.getElementById('pw-match-msg');
+        if (!b) { msg.textContent = ''; return; }
+        msg.textContent = a === b ? '✓ Passwords match' : '✗ Passwords do not match';
+        msg.style.color = a === b ? 'var(--green)' : 'var(--red)';
+      }));
+    </script>
+  </div>
+
+  <div class="card">
+    <h2>Current Users</h2>
+    <table>
+      <thead>
+        <tr><th>Username</th><th>Role</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        {% set is_self = u.username == username %}
+        {# can current user manage this row? #}
+        {% if current_role == 'admin' %}
+          {% set manageable = not is_self %}
+        {% elif current_role == 'moderator' %}
+          {% set manageable = not is_self and u.role in ['user','viewer'] %}
+        {% else %}
+          {% set manageable = false %}
+        {% endif %}
+        {# roles assignable for this row #}
+        {% if current_role == 'admin' %}{% set assignable = ['admin','moderator','user','viewer'] %}
+        {% else %}{% set assignable = ['user','viewer'] %}{% endif %}
+        <tr>
+          <td>
+            {{ u.username }}
+            {% if is_self %}<span style="color:var(--muted);font-size:.8rem"> (you)</span>{% endif %}
+          </td>
+          <td>
+            {% if u.role == 'admin' %}
+              <span class="badge badge-online">Admin</span>
+            {% elif u.role == 'moderator' %}
+              <span class="badge" style="background:rgba(255,179,0,.15);color:var(--yellow);border:1px solid var(--yellow)">Mod</span>
+            {% elif u.role == 'user' %}
+              <span style="color:var(--muted);font-size:.85rem">User</span>
+            {% else %}
+              <span style="color:var(--muted);font-size:.85rem">Viewer</span>
+            {% endif %}
+          </td>
+          <td>
+            <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+              {% if manageable %}
+                {# role dropdown #}
+                <form method="post" action="/users/set-role" style="display:flex;gap:.4rem;align-items:center">
+                  <input type="hidden" name="username" value="{{ u.username }}">
+                  <select name="role" style="padding:4px 8px;font-size:.8rem;width:auto">
+                    {% for r in assignable %}
+                    <option value="{{ r }}" {% if r == u.role %}selected{% endif %}>{{ r|capitalize }}</option>
+                    {% endfor %}
+                  </select>
+                  <button type="submit" class="btn btn-muted btn-sm">Set</button>
+                </form>
+                <button class="btn btn-muted btn-sm" onclick="showChangePw('{{ u.username }}')">Change PW</button>
+                <form method="post" action="/users/delete" style="display:inline">
+                  <input type="hidden" name="username" value="{{ u.username }}">
+                  <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete {{ u.username }}?')">Delete</button>
+                </form>
+              {% elif is_self %}
+                <button class="btn btn-muted btn-sm" onclick="showChangePw('{{ u.username }}')">Change PW</button>
+              {% else %}
+                <span style="color:var(--muted);font-size:.8rem">—</span>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{# change password modal #}
+<div id="pw-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center" onclick="if(event.target===this)this.style.display='none'">
+  <div class="card" style="width:320px;margin:0">
+    <h2>Change Password</h2>
+    <form method="post" action="/users/change-password">
+      <input type="hidden" name="username" id="pw-username">
+      <div class="form-group">
+        <label id="pw-label">New password</label>
+        <input type="password" name="password" autocomplete="new-password" id="pw-input">
+      </div>
+      <div style="display:flex;gap:.5rem">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <button type="button" class="btn btn-muted" onclick="document.getElementById('pw-modal').style.display='none'">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function showChangePw(username) {
+  document.getElementById('pw-username').value = username;
+  document.getElementById('pw-label').textContent = `New password for ${username}`;
+  document.getElementById('pw-input').value = '';
+  document.getElementById('pw-modal').style.display = 'flex';
+  document.getElementById('pw-input').focus();
+}
+</script>
+
+{% else %}
+{# viewer / user — own password only #}
+<div class="card" style="max-width:400px">
+  <h2>Change Your Password</h2>
+  <form method="post" action="/users/change-password">
+    <input type="hidden" name="username" value="{{ username }}">
+    <div class="form-group">
+      <label>New Password</label>
+      <input type="password" name="password" autocomplete="new-password">
+    </div>
+    <button type="submit" class="btn btn-primary">Update Password</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

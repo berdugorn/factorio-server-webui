@@ -1,4 +1,4 @@
-# Factorio Server Manager
+# Factorio Server WebUI
 
 A lightweight web interface for managing a Factorio dedicated server running under systemd. Built with Flask — no external databases, no heavy dependencies.
 
@@ -115,8 +115,8 @@ Four permission tiers, ordered lowest to highest: **viewer → user → moderato
 ## Installation
 
 ```bash
-git clone https://github.com/youruser/factorio-server-manager.git
-cd factorio-server-manager
+git clone https://github.com/berdugorn/factorio-server-webui.git
+cd factorio-server-webui
 sudo bash install.sh
 ```
 

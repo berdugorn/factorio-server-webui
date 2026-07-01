@@ -655,7 +655,7 @@ def api_chat():
                 continue
             messages.append({'ts': m.group(1), 'time': m.group(1)[11:], 'player': m.group(2), 'text': m.group(3), 'type': 'chat'})
             continue
-        m = re.search(r'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[JOIN\] (.+)', line)
+        m = re.search(r'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[JOIN\] (.+?) joined the game', line)
         if m:
             messages.append({'ts': m.group(1), 'time': m.group(1)[11:], 'player': m.group(2), 'text': 'joined the game', 'type': 'join'})
             continue
